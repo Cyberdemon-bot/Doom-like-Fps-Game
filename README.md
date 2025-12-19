@@ -64,7 +64,9 @@ cmake --build build
 
 ## Using Framework
 # Open Devlib folder and open all dmg file
-# choose .framework folder and move to ~/Library/Frameworks
+# Choose .framework folder and move to ~/Library/Frameworks
+# Disable macos's security mechanism to your framework
+sudo xattr -r -d com.apple.quarantine /Library/Frameworks/SDL2*.framework
 
 # Build the project
 cmake -S . -B build
