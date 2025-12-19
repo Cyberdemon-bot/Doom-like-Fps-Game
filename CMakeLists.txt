@@ -19,19 +19,44 @@ target_include_directories(main PRIVATE
 # PLATFORM SWITCH
 # =======================
 if (APPLE)
-    message(STATUS "Configuring for macOS (Homebrew)")
+    message(STATUS "Configuring for macOS")
 
-    find_package(SDL2 REQUIRED)
-    find_package(SDL2_image REQUIRED)
-    find_package(SDL2_ttf REQUIRED)
-    find_package(SDL2_mixer REQUIRED)
+    # --- Try Homebrew first ---
+    find_package(SDL2)
+    find_package(SDL2_image)
+    find_package(SDL2_ttf)
+    find_package(SDL2_mixer)
 
-    target_link_libraries(main PRIVATE
-        SDL2::SDL2
-        SDL2_image::SDL2_image
-        SDL2_ttf::SDL2_ttf
-        SDL2_mixer::SDL2_mixer
-    )
+    if (SDL2_FOUND)
+        message(STATUS "Found SDL2 via find_package")
+        target_link_libraries(main PRIVATE
+            SDL2::SDL2
+            SDL2_image::SDL2_image
+            SDL2_ttf::SDL2_ttf
+            SDL2_mixer::SDL2_mixer
+        )
+    else()
+        message(STATUS "SDL2 not found via find_package, falling back to Frameworks")
+
+        # --- Framework paths ---
+        set(FRAMEWORK_PATHS /Library/Frameworks ~/Library/Frameworks)
+
+        foreach(FW_PATH IN LISTS FRAMEWORK_PATHS)
+            if(EXISTS "${FW_PATH}/SDL2.framework")
+                message(STATUS "Using SDL2.framework in ${FW_PATH}")
+                target_include_directories(main PRIVATE "${FW_PATH}/SDL2.framework/Headers")
+                target_link_options(main PRIVATE
+                    "-F${FW_PATH}"
+                    "-framework SDL2"
+                    "-framework SDL2_image"
+                    "-framework SDL2_ttf"
+                    "-framework SDL2_mixer"
+                )
+                break()
+            endif()
+        endforeach()
+
+    endif()
 
 elseif (WIN32)
     message(STATUS "Configuring for Windows (Devlib)")
