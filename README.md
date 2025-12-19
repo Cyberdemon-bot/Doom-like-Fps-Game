@@ -39,8 +39,8 @@ A classic first-person shooter built from scratch in C++ using SDL2, featuring r
 ### Platform Specific
 
 **macOS:**
-- Homebrew
-- SDL2 libraries installed via Homebrew
+- Homebrew/Devlib folder (included in repository)
+- clang
 
 **Windows:**
 - Visual Studio Build Tools (MSVC)
@@ -51,8 +51,20 @@ A classic first-person shooter built from scratch in C++ using SDL2, featuring r
 ### macOS
 
 ```bash
+## Using Homebrew
 # Install dependencies via Homebrew
 brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer cmake
+
+# Build the project
+cmake -S . -B build
+cmake --build build
+
+# Run
+./build/main
+
+## Using Framework
+# Open Devlib folder and open all dmg file
+# choose .framework folder and move to ~/Library/Frameworks
 
 # Build the project
 cmake -S . -B build
