@@ -46,7 +46,7 @@ A classic first-person shooter built from scratch in C++ using SDL2, featuring r
 - Visual Studio Build Tools (MSVC)
 - Devlib folder (included in repository)
 
-## 🚀 Installation
+## 🚀 How to Compile and Run
 
 ### macOS
 
