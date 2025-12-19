@@ -243,8 +243,8 @@ AddSprite(
 Modify target FPS in `main.cpp`:
 ```cpp
 mainGame.Init("FPS_GAME", 1366, 768, 0, 1, 60, miniMap);
-//                                              ^^
-//                                              Target FPS
+//                         ^^    ^^        ^^    ^^
+//                        width height     FPS  target map
 ```
 
 ### Player Stats
