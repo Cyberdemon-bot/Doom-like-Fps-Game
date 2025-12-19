@@ -356,17 +356,6 @@ This project demonstrates:
 - **Frame-based animation systems**
 - **Cross-platform C++ development**
 
-## 📝 Code Highlights
-
-### Raycasting Core
-The `Renderer::RayCasting()` function casts rays across the player's FOV, calculating wall intersections and rendering textured columns with proper depth correction.
-
-### AI Pathfinding
-The `Game::FindPathAStar()` implements the A* algorithm with Manhattan distance heuristic for efficient enemy navigation.
-
-### Modular Design
-The `Engine` class provides a clean API separating game logic from low-level systems, making the codebase maintainable and extensible.
-
 ## 🤝 Contributing
 
 This is an educational project. Feel free to fork and experiment with:
