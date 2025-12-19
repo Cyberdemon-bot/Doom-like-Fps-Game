@@ -19,75 +19,85 @@ target_include_directories(main PRIVATE
 # PLATFORM SWITCH
 # =======================
 if (APPLE)
-    message(STATUS "Configuring for macOS")
+    # Kiểm tra xem có dùng Framework không
+    if (EXISTS "/Library/Frameworks/SDL2.framework")
+        message(STATUS "Configuring for macOS (Framework) with Wrapper trick")
 
-    # --- Try Homebrew first ---
-    find_package(SDL2)
-    find_package(SDL2_image)
-    find_package(SDL2_ttf)
-    find_package(SDL2_mixer)
+        # 1. Tạo thư mục 'wrappers' trong thư mục build
+        set(WRAPPER_DIR "${CMAKE_BINARY_DIR}/framework_wrappers")
+        file(MAKE_DIRECTORY ${WRAPPER_DIR})
 
-    if (SDL2_FOUND)
-        message(STATUS "Found SDL2 via find_package")
+        # 2. Hàm tạo Symlink: Biến .../Headers thành .../SDL2
+        # Giúp trình biên dịch hiểu được <SDL2/SDL.h>
+        function(create_framework_symlink NAME FRAMEWORK_PATH)
+            execute_process(COMMAND ln -sfn "${FRAMEWORK_PATH}/Headers" "${WRAPPER_DIR}/${NAME}")
+        endfunction()
+
+        # Tạo link ảo cho cả 4 thư viện
+        create_framework_symlink("SDL2"       "/Library/Frameworks/SDL2.framework")
+        create_framework_symlink("SDL2_image" "/Library/Frameworks/SDL2_image.framework")
+        create_framework_symlink("SDL2_ttf"   "/Library/Frameworks/SDL2_ttf.framework")
+        create_framework_symlink("SDL2_mixer" "/Library/Frameworks/SDL2_mixer.framework")
+
+        # 3. Link thư viện Framework
+        target_link_options(main PRIVATE "-F/Library/Frameworks")
+        target_link_libraries(main PRIVATE
+            "-framework SDL2"
+            "-framework SDL2_image"
+            "-framework SDL2_ttf"
+            "-framework SDL2_mixer"
+        )
+
+        # 4. Include Path (Quan trọng nhất)
+        target_include_directories(main PRIVATE
+            # A. Để code của BẠN tìm thấy <SDL.h> (Flat include)
+            /Library/Frameworks/SDL2.framework/Headers
+            /Library/Frameworks/SDL2_image.framework/Headers
+            /Library/Frameworks/SDL2_ttf.framework/Headers
+            /Library/Frameworks/SDL2_mixer.framework/Headers
+
+            # B. Để code NỘI BỘ THƯ VIỆN tìm thấy <SDL2/SDL_main.h> (Namespaced include)
+            ${WRAPPER_DIR}
+        )
+
+        # Setup RPATH để chạy được game sau khi build
+        set_target_properties(main PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+        set_target_properties(main PROPERTIES INSTALL_RPATH "@executable_path/../Frameworks;/Library/Frameworks")
+
+    else()
+        # Fallback cho Homebrew
+        message(STATUS "Configuring for macOS (Homebrew)")
+        find_package(SDL2 REQUIRED)
+        find_package(SDL2_image REQUIRED)
+        find_package(SDL2_ttf REQUIRED)
+        find_package(SDL2_mixer REQUIRED)
+
         target_link_libraries(main PRIVATE
             SDL2::SDL2
             SDL2_image::SDL2_image
             SDL2_ttf::SDL2_ttf
             SDL2_mixer::SDL2_mixer
         )
-    else()
-        message(STATUS "SDL2 not found via find_package, falling back to Frameworks")
-
-        # --- Framework paths ---
-        set(FRAMEWORK_PATHS /Library/Frameworks ~/Library/Frameworks)
-
-        foreach(FW_PATH IN LISTS FRAMEWORK_PATHS)
-            if(EXISTS "${FW_PATH}/SDL2.framework")
-                message(STATUS "Using SDL2.framework in ${FW_PATH}")
-                target_include_directories(main PRIVATE "${FW_PATH}/SDL2.framework/Headers")
-                target_link_options(main PRIVATE
-                    "-F${FW_PATH}"
-                    "-framework SDL2"
-                    "-framework SDL2_image"
-                    "-framework SDL2_ttf"
-                    "-framework SDL2_mixer"
-                )
-                break()
-            endif()
-        endforeach()
-
     endif()
 
 elseif (WIN32)
     message(STATUS "Configuring for Windows (Devlib)")
-
     set(DEVLIB ${PROJECT_SOURCE_DIR}/Devlib)
 
-    # ---- Include paths ----
     target_include_directories(main PRIVATE
         ${DEVLIB}/SDL/include
         ${DEVLIB}/Image/include
         ${DEVLIB}/Mixer/include
         ${DEVLIB}/TTF/include
     )
-
-    # ---- Link libraries ----
     target_link_directories(main PRIVATE
         ${DEVLIB}/SDL/lib
         ${DEVLIB}/Image/lib
         ${DEVLIB}/Mixer/lib
         ${DEVLIB}/TTF/lib
     )
+    target_link_libraries(main PRIVATE SDL2 SDL2main SDL2_image SDL2_mixer SDL2_ttf)
 
-    target_link_libraries(main PRIVATE
-        SDL2
-        SDL2main
-        SDL2_image
-        SDL2_mixer
-        SDL2_ttf
-    )
-
-    # ---- Copy DLLs after build ----
     add_custom_command(TARGET main POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${DEVLIB}/SDL/bin/SDL2.dll
