@@ -114,7 +114,7 @@ build\Debug\main.exe
 │   ├── bg/                 # Sky texture
 │   └── font/               # Fonts for UI
 ├── CMakeLists.txt          # Build configuration
-└── Devlib/                 # Windows SDL2 libraries (not in repo)
+└── Devlib/                 # Windows SDL2 libraries 
 ```
 
 ## 🎯 Architecture Overview
