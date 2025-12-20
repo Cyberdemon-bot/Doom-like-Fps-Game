@@ -21,25 +21,36 @@ target_include_directories(main PRIVATE
 if (APPLE)
     # Kiểm tra xem có dùng Framework không
     if (EXISTS "/Library/Frameworks/SDL2.framework")
-        message(STATUS "Configuring for macOS (Framework) with Wrapper trick")
+        message(STATUS "Configuring for macOS (Framework) - Unified Headers Mode")
 
-        # 1. Tạo thư mục 'wrappers' trong thư mục build
-        set(WRAPPER_DIR "${CMAKE_BINARY_DIR}/framework_wrappers")
-        file(MAKE_DIRECTORY ${WRAPPER_DIR})
+        # 1. Tạo folder đích chung tên là "SDL2"
+        set(WRAPPER_ROOT "${CMAKE_BINARY_DIR}/framework_wrappers")
+        set(UNIFIED_SDL2_DIR "${WRAPPER_ROOT}/SDL2")
+        
+        # Xóa cũ làm mới để tránh rác
+        file(REMOVE_RECURSE ${WRAPPER_ROOT})
+        file(MAKE_DIRECTORY ${UNIFIED_SDL2_DIR})
 
-        # 2. Hàm tạo Symlink: Biến .../Headers thành .../SDL2
-        # Giúp trình biên dịch hiểu được <SDL2/SDL.h>
-        function(create_framework_symlink NAME FRAMEWORK_PATH)
-            execute_process(COMMAND ln -sfn "${FRAMEWORK_PATH}/Headers" "${WRAPPER_DIR}/${NAME}")
+        # 2. Hàm Symlink từng file: Gom hết file .h từ các nguồn khác nhau vào 1 chỗ
+        function(link_framework_headers FRAMEWORK_NAME)
+            set(SRC_PATH "/Library/Frameworks/${FRAMEWORK_NAME}.framework/Headers")
+            if(EXISTS "${SRC_PATH}")
+                file(GLOB HEADERS "${SRC_PATH}/*.h")
+                foreach(HEADER ${HEADERS})
+                    get_filename_component(HEADER_NAME ${HEADER} NAME)
+                    # Tạo shortcut trỏ từ folder chung về file gốc
+                    execute_process(COMMAND ln -sf "${HEADER}" "${UNIFIED_SDL2_DIR}/${HEADER_NAME}")
+                endforeach()
+            endif()
         endfunction()
 
-        # Tạo link ảo cho cả 4 thư viện
-        create_framework_symlink("SDL2"       "/Library/Frameworks/SDL2.framework")
-        create_framework_symlink("SDL2_image" "/Library/Frameworks/SDL2_image.framework")
-        create_framework_symlink("SDL2_ttf"   "/Library/Frameworks/SDL2_ttf.framework")
-        create_framework_symlink("SDL2_mixer" "/Library/Frameworks/SDL2_mixer.framework")
+        # 3. Gom header của cả 4 thư viện vào folder "SDL2" ảo
+        link_framework_headers("SDL2")
+        link_framework_headers("SDL2_image")
+        link_framework_headers("SDL2_ttf")
+        link_framework_headers("SDL2_mixer")
 
-        # 3. Link thư viện Framework
+        # 4. Link thư viện Framework (Binary)
         target_link_options(main PRIVATE "-F/Library/Frameworks")
         target_link_libraries(main PRIVATE
             "-framework SDL2"
@@ -48,19 +59,17 @@ if (APPLE)
             "-framework SDL2_mixer"
         )
 
-        # 4. Include Path (Quan trọng nhất)
+        # 5. Include Path
         target_include_directories(main PRIVATE
-            # A. Để code của BẠN tìm thấy <SDL.h> (Flat include)
-            /Library/Frameworks/SDL2.framework/Headers
-            /Library/Frameworks/SDL2_image.framework/Headers
-            /Library/Frameworks/SDL2_ttf.framework/Headers
-            /Library/Frameworks/SDL2_mixer.framework/Headers
-
-            # B. Để code NỘI BỘ THƯ VIỆN tìm thấy <SDL2/SDL_main.h> (Namespaced include)
-            ${WRAPPER_DIR}
+            # Trỏ vào wrapper root, để khi viết <SDL2/SDL_mixer.h>
+            # nó sẽ đi vào folder SDL2 (mà ta vừa gom đủ thứ vào đó)
+            ${WRAPPER_ROOT}
+            
+            # Fallback cho các file nội bộ tìm thấy nhau
+            ${UNIFIED_SDL2_DIR}
         )
-
-        # Setup RPATH để chạy được game sau khi build
+        
+        # Setup RPATH
         set_target_properties(main PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
         set_target_properties(main PROPERTIES INSTALL_RPATH "@executable_path/../Frameworks;/Library/Frameworks")
 
