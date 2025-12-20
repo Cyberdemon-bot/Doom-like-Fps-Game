@@ -90,22 +90,39 @@ if (APPLE)
     endif()
 
 elseif (WIN32)
-    message(STATUS "Configuring for Windows (Devlib)")
+    message(STATUS "Configuring for Windows (Devlib) - Manual Structure Mode")
     set(DEVLIB ${PROJECT_SOURCE_DIR}/Devlib)
 
+    # =========================================================
+    # INCLUDE PATH (SỬA LẠI ĐOẠN NÀY)
+    # =========================================================
     target_include_directories(main PRIVATE
+        # 1. Giúp code của BẠN tìm thấy <SDL2/SDL.h>
+        # (Nó nhìn thấy folder SDL2 bên trong các đường dẫn này)
         ${DEVLIB}/SDL/include
         ${DEVLIB}/Image/include
         ${DEVLIB}/Mixer/include
         ${DEVLIB}/TTF/include
+
+        # 2. [QUAN TRỌNG] Giúp SDL_image/Mixer tìm thấy <SDL.h>
+        # (Nó nhìn thấy file SDL.h nằm trực tiếp trong này)
+        ${DEVLIB}/SDL/include/SDL2
+        ${DEVLIB}/Image/include/SDL2
+        ${DEVLIB}/Mixer/include/SDL2
+        ${DEVLIB}/TTF/include/SDL2
     )
+
+    # =========================================================
+    # CÁC PHẦN DƯỚI GIỮ NGUYÊN
+    # =========================================================
     target_link_directories(main PRIVATE
         ${DEVLIB}/SDL/lib
         ${DEVLIB}/Image/lib
         ${DEVLIB}/Mixer/lib
         ${DEVLIB}/TTF/lib
     )
-    target_link_libraries(main PRIVATE SDL2 SDL2main SDL2_image SDL2_mixer SDL2_ttf)
+    
+    target_link_libraries(main PRIVATE SDL2main SDL2 SDL2_image SDL2_mixer SDL2_ttf)
 
     add_custom_command(TARGET main POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
