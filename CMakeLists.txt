@@ -8,27 +8,27 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # =======================
 # 1. SETUP SOURCES
 # =======================
-file(GLOB SOURCE_FILES CONFIGURE_DEPENDS src/*.cpp)
+file(GLOB SOURCE_FILES CONFIGURE_DEPENDS src/*.cpp src/*.c) 
+# (Lưu ý: mình thêm src/*.c để lỡ bạn có dùng glad.c thì nó tự bắt luôn)
+
 add_executable(main ${SOURCE_FILES})
 
 # =======================
-# 2. SETUP INCLUDE (DÙNG CHUNG CHO CẢ WIN & MAC)
+# 2. SETUP INCLUDE (DÙNG CHUNG TOÀN CẦU)
 # =======================
-# Định nghĩa đường dẫn tới thư viện của bạn
-# (Sau này đổi tên 'Devlib' thành 'vendor' thì sửa dòng này là xong)
+# Dù chạy Win, Mac (Framework) hay Mac (Brew) thì đều ưu tiên dùng Header này
 set(LIB_ROOT ${PROJECT_SOURCE_DIR}/Devlib) 
 
 target_include_directories(main PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     
-    # --- Include từ Devlib cho mọi nền tảng ---
-    # 1. Để code viết <SDL2/SDL.h> tìm thấy folder
+    # Include từ Devlib
     ${LIB_ROOT}/SDL/include
     ${LIB_ROOT}/Image/include
     ${LIB_ROOT}/Mixer/include
     ${LIB_ROOT}/TTF/include
 
-    # 2. Để file nội bộ thư viện tìm thấy <SDL.h>
+    # Include để fix lỗi thư viện nội bộ tìm nhau
     ${LIB_ROOT}/SDL/include/SDL2
     ${LIB_ROOT}/Image/include/SDL2
     ${LIB_ROOT}/Mixer/include/SDL2
@@ -36,27 +36,47 @@ target_include_directories(main PRIVATE
 )
 
 # =======================
-# 3. SETUP LINKING (KHÁC NHAU)
+# 3. SETUP LINKING (PHÂN NHÁNH)
 # =======================
 
 if (APPLE)
-    message(STATUS "macOS: Using Local Headers + System Frameworks")
-    
-    # Chỉ cần bảo Linker tìm Framework (Binary) của hệ thống
-    target_link_options(main PRIVATE "-F/Library/Frameworks")
-    target_link_libraries(main PRIVATE 
-        "-framework SDL2" 
-        "-framework SDL2_image" 
-        "-framework SDL2_mixer" 
-        "-framework SDL2_ttf"
-    )
+    # --- KIỂM TRA 1: Framework hệ thống (/Library/Frameworks) ---
+    if (EXISTS "/Library/Frameworks/SDL2.framework")
+        message(STATUS "macOS: Found System Frameworks in /Library/Frameworks")
+        
+        target_link_options(main PRIVATE "-F/Library/Frameworks")
+        target_link_libraries(main PRIVATE 
+            "-framework SDL2" 
+            "-framework SDL2_image" 
+            "-framework SDL2_mixer" 
+            "-framework SDL2_ttf"
+        )
+        
+        # Setup RPATH để chạy game không cần copy framework
+        set_target_properties(main PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+        set_target_properties(main PROPERTIES INSTALL_RPATH "@executable_path/../Frameworks;/Library/Frameworks")
 
-    # Setup RPATH để chạy được game mà không cần copy framework vào app
-    set_target_properties(main PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
-    set_target_properties(main PROPERTIES INSTALL_RPATH "@executable_path/../Frameworks;/Library/Frameworks")
+    # --- KIỂM TRA 2: Fallback sang Homebrew (hoặc các bản cài khác) ---
+    else()
+        message(STATUS "macOS: System Frameworks NOT found. Fallback to Homebrew/System Libs...")
+        
+        # Dùng lệnh chuẩn của CMake để tìm thư viện đã cài trong máy
+        find_package(SDL2 REQUIRED)
+        find_package(SDL2_image REQUIRED)
+        find_package(SDL2_mixer REQUIRED)
+        find_package(SDL2_ttf REQUIRED)
+
+        # Link với thư viện tìm được
+        target_link_libraries(main PRIVATE 
+            SDL2::SDL2 
+            SDL2_image::SDL2_image 
+            SDL2_mixer::SDL2_mixer 
+            SDL2_ttf::SDL2_ttf
+        )
+    endif()
 
 elseif (WIN32)
-    message(STATUS "Windows: Using Local Headers + Local Libs")
+    message(STATUS "Windows: Using Local Devlib")
 
     target_link_directories(main PRIVATE
         ${LIB_ROOT}/SDL/lib
